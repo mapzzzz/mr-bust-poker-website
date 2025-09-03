@@ -46,60 +46,68 @@
     <!-- Firebase SDK Imports -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, onSnapshot, setDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { setLogLevel } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
-        // Global variables provided by the Canvas environment
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        
+        // Firebase configuration provided by the user
+        const firebaseConfig = {
+            apiKey: "AIzaSyDvMPnxseByM6LxoJJXTZttLPmyfE187LY",
+            authDomain: "mrbustpoker-89df5.firebaseapp.com",
+            projectId: "mrbustpoker-89df5",
+            storageBucket: "mrbustpoker-89df5.appspot.com",
+            messagingSenderId: "8338005493",
+            appId: "1:8338005493:web:17b67065d11e0b498a94bc",
+            measurementId: "G-E3LFRJLWW5"
+        };
+
         let app, db, auth;
         const bankrollAmountEl = document.getElementById('bankroll-amount');
         const progressBar = document.getElementById('progress-bar');
         const progressText = document.getElementById('progress-text');
         const userIdEl = document.getElementById('user-id-el');
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'mrbustpoker-89df5'; // Fallback to projectId for stability
 
         const startingBankroll = 1;
         const bankrollGoal = 100000;
         
         // This function sets up the app with Firebase
         async function setupFirebase() {
-            if (Object.keys(firebaseConfig).length === 0) {
-                console.error("Firebase config is missing.");
+            if (!firebaseConfig.apiKey) {
+                console.error("Firebase config is missing. Please paste your project's configuration into the script tag.");
                 return;
             }
             
             app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
-            setLogLevel('debug');
             
-            // Authenticate the user using the provided token or anonymously
             try {
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
+                console.log("Attempting to sign in anonymously...");
+                await signInAnonymously(auth);
             } catch (error) {
-                console.error("Authentication error:", error);
+                console.error("Anonymous authentication error:", error);
+                // Using a custom modal/div instead of alert()
+                const authErrorDiv = document.createElement('div');
+                authErrorDiv.textContent = "Could not authenticate. Please ensure Anonymous Sign-In is enabled in your Firebase project.";
+                authErrorDiv.style.cssText = "position:fixed; top:10px; left:50%; transform:translateX(-50%); background:red; color:white; padding:10px; border-radius:5px; z-index:1000;";
+                document.body.appendChild(authErrorDiv);
+                setTimeout(() => authErrorDiv.remove(), 5000);
             }
 
             // Listen for changes in the auth state
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
                     const userId = user.uid;
-                    console.log("User authenticated:", userId);
-                    userIdEl.textContent = `User ID: ${userId}`;
+                    console.log("User authenticated with UID:", userId);
+                    userIdEl.textContent = `Anonymous User ID: ${userId}`;
                     
-                    const bankrollRef = doc(db, "artifacts", appId, "public", "data", "settings", "bankroll");
+                    const bankrollRef = doc(db, "artifacts", appId, "public", "data", "bankrollChallenge", "mainTracker");
 
                     try {
-                        // First, ensure the document exists.
                         const docSnap = await getDoc(bankrollRef);
+                        
                         if (!docSnap.exists()) {
+                            console.log("No bankroll document found. Creating one...");
                             await setDoc(bankrollRef, {
                                 currentBankroll: startingBankroll,
                                 lastUpdated: serverTimestamp()
@@ -109,39 +117,38 @@
                             console.log("Bankroll document already exists.");
                         }
 
-                        // Now, set up the real-time listener.
+                        // Set up the real-time listener to update the UI whenever the data changes.
                         onSnapshot(bankrollRef, (snapshot) => {
                             if (snapshot.exists()) {
                                 const data = snapshot.data();
                                 const currentBankroll = data.currentBankroll;
-                                
                                 const progressPercentage = (currentBankroll / bankrollGoal) * 100;
                                 
-                                // Update progress bar width and text
+                                // Update UI elements
                                 progressBar.style.width = `${progressPercentage.toFixed(2)}%`;
                                 progressText.textContent = `${progressPercentage.toFixed(2)}%`;
-                                bankrollAmountEl.textContent = `$${currentBankroll.toFixed(0)} / $${bankrollGoal}`;
+                                bankrollAmountEl.textContent = `$${currentBankroll.toLocaleString()} / $${bankrollGoal.toLocaleString()}`;
                                 console.log(`Bankroll updated to: ${currentBankroll}`);
                             } else {
-                                console.warn("Bankroll document no longer exists.");
-                                bankrollAmountEl.textContent = `$0 / $${bankrollGoal}`;
+                                console.warn("Bankroll document was deleted.");
+                                bankrollAmountEl.textContent = `$0 / $${bankrollGoal.toLocaleString()}`;
                                 progressBar.style.width = `0%`;
                                 progressText.textContent = `0.00%`;
                             }
                         }, (error) => {
-                            console.error("Error fetching bankroll data:", error);
+                            console.error("Error fetching bankroll data with onSnapshot:", error);
                         });
                         
                     } catch (error) {
-                        console.error("Error setting up bankroll data:", error);
+                        console.error("Error setting up bankroll data listener:", error);
                     }
                 } else {
                     console.log("User is not signed in.");
+                    userIdEl.textContent = "Not authenticated.";
                 }
             });
         }
         
-        // Call the setup function when the page loads
         document.addEventListener('DOMContentLoaded', setupFirebase);
     </script>
 
@@ -290,4 +297,5 @@
 
 </body>
 </html>
+
 
