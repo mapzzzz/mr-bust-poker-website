@@ -81,6 +81,16 @@
                     const trackerSection = document.getElementById('tracker-section');
 
                     try {
+                        const docSnap = await getDoc(bankrollRef);
+                        if (!docSnap.exists()) {
+                            // If the document doesn't exist, create it with the starting value.
+                            await setDoc(bankrollRef, {
+                                currentBankroll: startingBankroll,
+                                lastUpdated: serverTimestamp()
+                            });
+                            console.log("Initial bankroll document created.");
+                        }
+
                         // Use onSnapshot to listen for real-time changes
                         onSnapshot(bankrollRef, (snapshot) => {
                             if (snapshot.exists()) {
@@ -88,26 +98,20 @@
                                 const currentBankroll = data.currentBankroll;
                                 
                                 const progressPercentage = (currentBankroll / bankrollGoal) * 100;
-                                const bankrollDisplay = document.getElementById('bankroll-amount');
+                                const bankrollAmountEl = document.getElementById('bankroll-amount');
                                 const progressBar = document.getElementById('progress-bar');
                                 const progressText = document.getElementById('progress-text');
 
                                 // Update progress bar width and text
                                 progressBar.style.width = `${progressPercentage.toFixed(2)}%`;
                                 progressText.textContent = `${progressPercentage.toFixed(2)}%`;
-                                bankrollDisplay.textContent = `$${currentBankroll.toFixed(2)} / $${bankrollGoal}`;
+                                bankrollAmountEl.textContent = `${currentBankroll.toFixed(0)} / ${bankrollGoal}`;
                             } else {
-                                // If the document doesn't exist, create it with the starting value.
-                                // This will trigger the onSnapshot listener again with the new data.
-                                console.log("Bankroll document not found. Creating a new one.");
-                                setDoc(bankrollRef, {
-                                    currentBankroll: startingBankroll,
-                                    lastUpdated: serverTimestamp()
-                                }).then(() => {
-                                    console.log("Initial bankroll document created.");
-                                }).catch(error => {
-                                    console.error("Error creating initial bankroll document:", error);
-                                });
+                                // This block will now only run if the document is deleted, not on initial load
+                                console.warn("Bankroll document not found during snapshot. Please ensure it exists.");
+                                bankrollAmountEl.textContent = `0 / ${bankrollGoal}`;
+                                progressBar.style.width = `0%`;
+                                progressText.textContent = `0.00%`;
                             }
                         }, (error) => {
                             console.error("Error fetching bankroll data:", error);
@@ -212,7 +216,7 @@
                         <div id="progress-bar" class="progress-bar absolute" style="width: 0%;"></div>
                         <div class="absolute w-full h-full flex items-center justify-between px-4">
                             <span id="progress-text" class="text-white text-lg font-bold">0.00%</span>
-                            <span id="bankroll-amount" class="text-white text-lg font-bold">$1.00 / $100,000</span>
+                            <span id="bankroll-amount" class="text-white text-lg font-bold">1 / 100,000</span>
                         </div>
                     </div>
                 </a>
