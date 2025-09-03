@@ -46,10 +46,21 @@
     <!-- Firebase SDK Imports -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, onSnapshot, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
+        // Your Firebase configuration (provided by you)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDvMPnxseByM6LxoJJXTZttLPmyfE187LY",
+            authDomain: "mrbustpoker-89df5.firebaseapp.com",
+            projectId: "mrbustpoker-89df5",
+            storageBucket: "mrbustpoker-89df5.firebasestorage.app",
+            messagingSenderId: "8338005493",
+            appId: "1:8338005493:web:17b67065d11e0b498a94bc",
+            measurementId: "G-E3LFRJLWW5"
+        };
+        
         // Initialize Firebase
         let app, db, auth;
         const trackerSection = document.getElementById('tracker-section');
@@ -58,8 +69,6 @@
         const progressText = document.getElementById('progress-text');
 
         // Check if the firebaseConfig object is not empty before initialization
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        
         if (Object.keys(firebaseConfig).length > 0) {
             app = initializeApp(firebaseConfig);
             db = getFirestore(app);
@@ -68,7 +77,12 @@
             
             const startingBankroll = 1;
             const bankrollGoal = 100000;
-            const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.appId;
+            const appId = firebaseConfig.appId;
+
+            // Sign in anonymously since no custom token is available
+            signInAnonymously(auth).catch((error) => {
+                console.error("Error signing in anonymously:", error);
+            });
 
             // Wait for auth state to be ready
             onAuthStateChanged(auth, async (user) => {
@@ -135,17 +149,6 @@
                     console.log("User is not signed in.");
                 }
             });
-
-            const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-            if (initialAuthToken) {
-                signInWithCustomToken(auth, initialAuthToken).catch((error) => {
-                    console.error("Error signing in with custom token:", error);
-                });
-            } else {
-                signInAnonymously(auth).catch((error) => {
-                    console.error("Error signing in anonymously:", error);
-                });
-            }
         } else {
             console.warn("Firebase config is not available. The app is waiting for it to be provided by the environment.");
             trackerSection.innerHTML = `
@@ -156,7 +159,6 @@
                 </div>
             `;
         }
-        
     </script>
 
     <!-- Header -->
