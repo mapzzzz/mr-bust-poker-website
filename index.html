@@ -81,17 +81,7 @@
                     const trackerSection = document.getElementById('tracker-section');
 
                     try {
-                        // Check if the bankroll document exists. If not, create it.
-                        const docSnap = await getDoc(bankrollRef);
-                        if (!docSnap.exists()) {
-                            await setDoc(bankrollRef, {
-                                currentBankroll: startingBankroll,
-                                lastUpdated: serverTimestamp()
-                            });
-                            console.log("Initial bankroll document created.");
-                        }
-
-                        // Listen for real-time changes to the bankroll
+                        // Use onSnapshot to listen for real-time changes
                         onSnapshot(bankrollRef, (snapshot) => {
                             if (snapshot.exists()) {
                                 const data = snapshot.data();
@@ -107,14 +97,17 @@
                                 progressText.textContent = `${progressPercentage.toFixed(2)}%`;
                                 bankrollDisplay.textContent = `$${currentBankroll.toFixed(2)} / $${bankrollGoal}`;
                             } else {
-                                // This case should be handled by the initial check, but good to have
-                                trackerSection.innerHTML = `
-                                    <div class="text-center">
-                                        <h2 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-8">The Bankroll Tracker</h2>
-                                        <p class="text-lg text-red-400 mb-4">Error: Data not found.</p>
-                                        <p class="text-gray-400">Please make sure the Firestore database is set up correctly.</p>
-                                    </div>
-                                `;
+                                // If the document doesn't exist, create it with the starting value.
+                                // This will trigger the onSnapshot listener again with the new data.
+                                console.log("Bankroll document not found. Creating a new one.");
+                                setDoc(bankrollRef, {
+                                    currentBankroll: startingBankroll,
+                                    lastUpdated: serverTimestamp()
+                                }).then(() => {
+                                    console.log("Initial bankroll document created.");
+                                }).catch(error => {
+                                    console.error("Error creating initial bankroll document:", error);
+                                });
                             }
                         }, (error) => {
                             console.error("Error fetching bankroll data:", error);
