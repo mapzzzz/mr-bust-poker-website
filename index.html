@@ -81,17 +81,19 @@
                     const trackerSection = document.getElementById('tracker-section');
 
                     try {
+                        // First, ensure the document exists. This is the most critical step.
                         const docSnap = await getDoc(bankrollRef);
                         if (!docSnap.exists()) {
-                            // If the document doesn't exist, create it with the starting value.
                             await setDoc(bankrollRef, {
                                 currentBankroll: startingBankroll,
                                 lastUpdated: serverTimestamp()
                             });
-                            console.log("Initial bankroll document created.");
+                            console.log("Initial bankroll document created successfully.");
+                        } else {
+                            console.log("Bankroll document already exists.");
                         }
 
-                        // Use onSnapshot to listen for real-time changes
+                        // Now, set up the real-time listener.
                         onSnapshot(bankrollRef, (snapshot) => {
                             if (snapshot.exists()) {
                                 const data = snapshot.data();
@@ -106,9 +108,9 @@
                                 progressBar.style.width = `${progressPercentage.toFixed(2)}%`;
                                 progressText.textContent = `${progressPercentage.toFixed(2)}%`;
                                 bankrollAmountEl.textContent = `${currentBankroll.toFixed(0)} / ${bankrollGoal}`;
+                                console.log(`Bankroll updated to: ${currentBankroll}`);
                             } else {
-                                // This block will now only run if the document is deleted, not on initial load
-                                console.warn("Bankroll document not found during snapshot. Please ensure it exists.");
+                                console.warn("Bankroll document no longer exists.");
                                 bankrollAmountEl.textContent = `0 / ${bankrollGoal}`;
                                 progressBar.style.width = `0%`;
                                 progressText.textContent = `0.00%`;
@@ -300,4 +302,3 @@
 
 </body>
 </html>
-
