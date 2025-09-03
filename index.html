@@ -46,14 +46,9 @@
     <!-- Firebase SDK Imports -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, onSnapshot, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
-
-        // Global variables provided by the environment
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         // Initialize Firebase
         let app, db, auth;
@@ -62,6 +57,9 @@
         const progressBar = document.getElementById('progress-bar');
         const progressText = document.getElementById('progress-text');
 
+        // Check if the firebaseConfig object is not empty before initialization
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        
         if (Object.keys(firebaseConfig).length > 0) {
             app = initializeApp(firebaseConfig);
             db = getFirestore(app);
@@ -70,12 +68,12 @@
             
             const startingBankroll = 1;
             const bankrollGoal = 100000;
-            let userId = 'anonymous';
+            const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.appId;
 
             // Wait for auth state to be ready
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
-                    userId = user.uid;
+                    const userId = user.uid;
                     console.log("User authenticated:", userId);
                     
                     const bankrollRef = doc(db, "artifacts", appId, "public", "data", "settings", "bankroll");
@@ -138,7 +136,7 @@
                 }
             });
 
-            // Sign in the user
+            const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
             if (initialAuthToken) {
                 signInWithCustomToken(auth, initialAuthToken).catch((error) => {
                     console.error("Error signing in with custom token:", error);
@@ -153,8 +151,8 @@
             trackerSection.innerHTML = `
                 <div class="text-center">
                     <h2 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-8">The Bankroll Tracker</h2>
-                    <p class="text-lg text-gray-400 mb-4">Connecting to Firebase...</p>
-                    <p class="text-sm text-gray-500">Please ensure the Firebase configuration is set up correctly in the Canvas environment.</p>
+                    <p class="text-lg text-red-400 mb-4">Error: Firebase configuration is missing.</p>
+                    <p class="text-sm text-gray-500">Please provide your Firebase project's configuration.</p>
                 </div>
             `;
         }
