@@ -94,7 +94,8 @@
                     console.log("User authenticated:", userId);
                     userIdEl.textContent = `User ID: ${userId}`;
                     
-                    const bankrollRef = doc(db, "artifacts", appId, "public", "data", "settings", "bankroll");
+                    // CRITICAL FIX: The path must be consistent with the update script
+                    const bankrollRef = doc(db, "artifacts", appId, "public", "data", "bankroll", "bankroll");
 
                     try {
                         // First, ensure the document exists.
@@ -290,3 +291,4 @@
 
 </body>
 </html>
+
