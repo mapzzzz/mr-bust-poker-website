@@ -22,147 +22,9 @@
         .text-shadow-custom {
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
         }
-        .progress-container {
-            height: 2rem;
-            background-color: #374151;
-            border-radius: 9999px;
-            overflow: hidden;
-            position: relative;
-        }
-        .progress-bar {
-            height: 100%;
-            background-color: #f59e0b;
-            transition: width 0.5s ease-in-out;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #1a202c;
-            font-weight: 600;
-        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200">
-
-    <!-- Firebase SDK Imports -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, onSnapshot, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { setLogLevel } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
-
-        // Global variables provided by the environment
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = {
-            apiKey: "AIzaSyDvMPnxseByM6LxoJJXTZttLPmyfE187LY",
-            authDomain: "mrbustpoker-89df5.firebaseapp.com",
-            projectId: "mrbustpoker-89df5",
-            storageBucket: "mrbustpoker-89df5.firebasestorage.app",
-            messagingSenderId: "8338005493",
-            appId: "1:8338005493:web:17b67065d11e0b498a94bc",
-            measurementId: "G-E3LFRJLWW5"
-        };
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        // Initialize Firebase
-        let app, db, auth;
-        if (Object.keys(firebaseConfig).length > 0) {
-            app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-            setLogLevel('debug');
-        } else {
-            console.warn("Firebase config is missing. Please provide your config to enable the tracker.");
-        }
-
-        const startingBankroll = 1;
-        const bankrollGoal = 100000;
-        let userId = 'anonymous';
-
-        // Wait for auth state to be ready
-        if (auth) {
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    userId = user.uid;
-                    console.log("User authenticated:", userId);
-                    
-                    const bankrollRef = doc(db, "artifacts", appId, "public", "data", "settings", "bankroll");
-                    const trackerSection = document.getElementById('tracker-section');
-
-                    try {
-                        // Check if the bankroll document exists. If not, create it.
-                        const docSnap = await getDoc(bankrollRef);
-                        if (!docSnap.exists()) {
-                            await setDoc(bankrollRef, {
-                                currentBankroll: startingBankroll,
-                                lastUpdated: serverTimestamp()
-                            });
-                            console.log("Initial bankroll document created.");
-                        }
-
-                        // Listen for real-time changes to the bankroll
-                        onSnapshot(bankrollRef, (snapshot) => {
-                            if (snapshot.exists()) {
-                                const data = snapshot.data();
-                                const currentBankroll = data.currentBankroll;
-                                
-                                const progressPercentage = (currentBankroll / bankrollGoal) * 100;
-                                const bankrollDisplay = document.getElementById('bankroll-amount');
-                                const progressBar = document.getElementById('progress-bar');
-                                const progressText = document.getElementById('progress-text');
-
-                                // Update progress bar width and text
-                                progressBar.style.width = `${progressPercentage.toFixed(2)}%`;
-                                progressText.textContent = `${progressPercentage.toFixed(2)}%`;
-                                bankrollDisplay.textContent = `$${currentBankroll.toFixed(2)} / $${bankrollGoal}`;
-                            } else {
-                                // This case should be handled by the initial check, but good to have
-                                trackerSection.innerHTML = `
-                                    <div class="text-center">
-                                        <h2 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-8">The Bankroll Tracker</h2>
-                                        <p class="text-lg text-red-400 mb-4">Error: Data not found.</p>
-                                        <p class="text-gray-400">Please make sure the Firestore database is set up correctly.</p>
-                                    </div>
-                                `;
-                            }
-                        }, (error) => {
-                            console.error("Error fetching bankroll data:", error);
-                            trackerSection.innerHTML = `
-                                <div class="text-center">
-                                    <h2 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-8">The Bankroll Tracker</h2>
-                                    <p class="text-lg text-red-400 mb-4">Error: Missing or insufficient permissions.</p>
-                                    <p class="text-gray-400">Please check your Firestore rules and ensure the 'settings/bankroll' document exists.</p>
-                                </div>
-                            `;
-                        });
-
-                    } catch (error) {
-                        console.error("Error setting up bankroll data:", error);
-                        trackerSection.innerHTML = `
-                            <div class="text-center">
-                                <h2 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-8">The Bankroll Tracker</h2>
-                                <p class="text-lg text-red-400 mb-4">An error occurred during setup.</p>
-                                <p class="text-gray-400">Please check your console for more details.</p>
-                            </div>
-                        `;
-                    }
-                } else {
-                    console.log("User is not signed in.");
-                }
-            });
-
-            // Sign in the user
-            if (initialAuthToken) {
-                signInWithCustomToken(auth, initialAuthToken).catch((error) => {
-                    console.error("Error signing in with custom token:", error);
-                });
-            } else {
-                signInAnonymously(auth).catch((error) => {
-                    console.error("Error signing in anonymously:", error);
-                });
-            }
-        }
-        
-    </script>
 
     <!-- Header -->
     <header class="bg-gray-800 bg-opacity-70 backdrop-blur-sm shadow-lg fixed w-full z-50">
@@ -216,29 +78,8 @@
             </div>
         </section>
         
-        <!-- Tracker Section -->
-        <section id="tracker" class="py-20 px-6 bg-gray-800">
-            <div class="container mx-auto max-w-5xl text-center" id="tracker-section">
-                <h2 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-8">The Bankroll Tracker</h2>
-                
-                <!-- Bankroll Progress Bar - Clickable -->
-                <a href="profits.html" class="block w-full max-w-2xl mx-auto mb-12 transform transition-transform duration-300 hover:scale-105">
-                    <div class="progress-container">
-                        <div id="progress-bar" class="progress-bar absolute" style="width: 0%;"></div>
-                        <div class="absolute w-full h-full flex items-center justify-between px-4">
-                            <span id="progress-text" class="text-white text-lg font-bold">0.00%</span>
-                            <span id="bankroll-amount" class="text-white text-lg font-bold">$1.00 / $100,000</span>
-                        </div>
-                    </div>
-                </a>
-                <p class="text-sm text-gray-400 mt-4">
-                    Note: The `profits.html` link is not yet functional. We can create that page next if you'd like.
-                </p>
-            </div>
-        </section>
-        
         <!-- Challenges Section -->
-        <section id="challenges" class="py-20 px-6">
+        <section id="challenges" class="py-20 px-6 bg-gray-800">
             <div class="container mx-auto max-w-5xl space-y-12 text-center">
                 <h2 class="text-3xl md:text-4xl font-bold text-yellow-400">The Challenges</h2>
                 <p class="text-lg text-gray-300 max-w-3xl mx-auto">
@@ -266,13 +107,13 @@
         </section>
 
         <!-- Mini-Challenges Section -->
-        <section id="mini-challenges" class="py-20 px-6 bg-gray-800">
+        <section id="mini-challenges" class="py-20 px-6">
             <div class="container mx-auto max-w-5xl space-y-12 text-center">
                 <h2 class="text-3xl md:text-4xl font-bold text-yellow-400">Mini Challenges</h2>
                 <p class="text-lg text-gray-300 max-w-3xl mx-auto">
                     In between the major challenges, I'll be taking on smaller, more focused goals to keep the grind fresh and the content engaging.
                 </p>
-                <div class="bg-gray-700 p-8 rounded-2xl shadow-lg border border-gray-600">
+                <div class="bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-700">
                     <ul class="text-lg text-gray-300 list-disc list-inside space-y-3 text-left max-w-xl mx-auto">
                         <li>**Lockdown Challenges:** Focused grinds to hit a specific goal in a short, intense period.</li>
                         <li>**Volume Challenges:** Pushing the limits of how many hands can be played in a set amount of time.</li>
@@ -285,7 +126,7 @@
         </section>
 
         <!-- Call to Action Section -->
-        <section id="youtube" class="py-20 px-6">
+        <section id="youtube" class="py-20 px-6 bg-gray-800">
             <div class="container mx-auto max-w-5xl text-center">
                 <div class="bg-gray-700 p-8 md:p-12 rounded-2xl shadow-lg border border-green-500 border-opacity-30">
                     <h2 class="text-3xl md:text-4xl font-bold text-green-500 mb-4">Join the Journey</h2>
@@ -294,7 +135,7 @@
                     </p>
                     <a href="https://www.youtube.com/@mrbustpoker" target="_blank" class="inline-block bg-red-600 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-red-700 transform transition-transform duration-300 hover:scale-105">
                         <div class="flex items-center justify-center space-x-2">
-                            <span>Subscribe on YouTube</span>
+                           <span>Subscribe on YouTube</span>
                         </div>
                     </a>
                 </div>
@@ -311,4 +152,5 @@
 
 </body>
 </html>
+
 
