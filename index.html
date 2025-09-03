@@ -57,28 +57,28 @@
 
         // Initialize Firebase
         let app, db, auth;
+        const trackerSection = document.getElementById('tracker-section');
+        const bankrollAmountEl = document.getElementById('bankroll-amount');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+
         if (Object.keys(firebaseConfig).length > 0) {
             app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
             setLogLevel('debug');
-        } else {
-            console.warn("Firebase config is missing. Please provide your config to enable the tracker.");
-        }
+            
+            const startingBankroll = 1;
+            const bankrollGoal = 100000;
+            let userId = 'anonymous';
 
-        const startingBankroll = 1;
-        const bankrollGoal = 100000;
-        let userId = 'anonymous';
-
-        // Wait for auth state to be ready
-        if (auth) {
+            // Wait for auth state to be ready
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
                     userId = user.uid;
                     console.log("User authenticated:", userId);
                     
                     const bankrollRef = doc(db, "artifacts", appId, "public", "data", "settings", "bankroll");
-                    const trackerSection = document.getElementById('tracker-section');
 
                     try {
                         // First, ensure the document exists. This is the most critical step.
@@ -100,10 +100,7 @@
                                 const currentBankroll = data.currentBankroll;
                                 
                                 const progressPercentage = (currentBankroll / bankrollGoal) * 100;
-                                const bankrollAmountEl = document.getElementById('bankroll-amount');
-                                const progressBar = document.getElementById('progress-bar');
-                                const progressText = document.getElementById('progress-text');
-
+                                
                                 // Update progress bar width and text
                                 progressBar.style.width = `${progressPercentage.toFixed(2)}%`;
                                 progressText.textContent = `${progressPercentage.toFixed(2)}%`;
@@ -151,6 +148,15 @@
                     console.error("Error signing in anonymously:", error);
                 });
             }
+        } else {
+            console.warn("Firebase config is not available. The app is waiting for it to be provided by the environment.");
+            trackerSection.innerHTML = `
+                <div class="text-center">
+                    <h2 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-8">The Bankroll Tracker</h2>
+                    <p class="text-lg text-gray-400 mb-4">Connecting to Firebase...</p>
+                    <p class="text-sm text-gray-500">Please ensure the Firebase configuration is set up correctly in the Canvas environment.</p>
+                </div>
+            `;
         }
         
     </script>
@@ -302,3 +308,4 @@
 
 </body>
 </html>
+
