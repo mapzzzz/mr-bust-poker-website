@@ -46,54 +46,58 @@
     <!-- Firebase SDK Imports -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, onSnapshot, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, setDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
-        // Your Firebase configuration (provided by you)
-        const firebaseConfig = {
-            apiKey: "AIzaSyDvMPnxseByM6LxoJJXTZttLPmyfE187LY",
-            authDomain: "mrbustpoker-89df5.firebaseapp.com",
-            projectId: "mrbustpoker-89df5",
-            storageBucket: "mrbustpoker-89df5.firebasestorage.app",
-            messagingSenderId: "8338005493",
-            appId: "1:8338005493:web:17b67065d11e0b498a94bc",
-            measurementId: "G-E3LFRJLWW5"
-        };
+        // Global variables provided by the Canvas environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
-        // Initialize Firebase
         let app, db, auth;
-        const trackerSection = document.getElementById('tracker-section');
         const bankrollAmountEl = document.getElementById('bankroll-amount');
         const progressBar = document.getElementById('progress-bar');
         const progressText = document.getElementById('progress-text');
+        const userIdEl = document.getElementById('user-id-el');
 
-        // Check if the firebaseConfig object is not empty before initialization
-        if (Object.keys(firebaseConfig).length > 0) {
+        const startingBankroll = 1;
+        const bankrollGoal = 100000;
+        
+        // This function sets up the app with Firebase
+        async function setupFirebase() {
+            if (Object.keys(firebaseConfig).length === 0) {
+                console.error("Firebase config is missing.");
+                return;
+            }
+            
             app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
             setLogLevel('debug');
             
-            const startingBankroll = 1;
-            const bankrollGoal = 100000;
-            const appId = firebaseConfig.appId;
+            // Authenticate the user using the provided token or anonymously
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Authentication error:", error);
+            }
 
-            // Sign in anonymously since no custom token is available
-            signInAnonymously(auth).catch((error) => {
-                console.error("Error signing in anonymously:", error);
-            });
-
-            // Wait for auth state to be ready
+            // Listen for changes in the auth state
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
                     const userId = user.uid;
                     console.log("User authenticated:", userId);
+                    userIdEl.textContent = `User ID: ${userId}`;
                     
                     const bankrollRef = doc(db, "artifacts", appId, "public", "data", "settings", "bankroll");
 
                     try {
-                        // First, ensure the document exists. This is the most critical step.
+                        // First, ensure the document exists.
                         const docSnap = await getDoc(bankrollRef);
                         if (!docSnap.exists()) {
                             await setDoc(bankrollRef, {
@@ -116,49 +120,29 @@
                                 // Update progress bar width and text
                                 progressBar.style.width = `${progressPercentage.toFixed(2)}%`;
                                 progressText.textContent = `${progressPercentage.toFixed(2)}%`;
-                                bankrollAmountEl.textContent = `${currentBankroll.toFixed(0)} / ${bankrollGoal}`;
+                                bankrollAmountEl.textContent = `$${currentBankroll.toFixed(0)} / $${bankrollGoal}`;
                                 console.log(`Bankroll updated to: ${currentBankroll}`);
                             } else {
                                 console.warn("Bankroll document no longer exists.");
-                                bankrollAmountEl.textContent = `0 / ${bankrollGoal}`;
+                                bankrollAmountEl.textContent = `$0 / $${bankrollGoal}`;
                                 progressBar.style.width = `0%`;
                                 progressText.textContent = `0.00%`;
                             }
                         }, (error) => {
                             console.error("Error fetching bankroll data:", error);
-                            trackerSection.innerHTML = `
-                                <div class="text-center">
-                                    <h2 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-8">The Bankroll Tracker</h2>
-                                    <p class="text-lg text-red-400 mb-4">Error: Missing or insufficient permissions.</p>
-                                    <p class="text-gray-400">Please check your Firestore rules and ensure the 'settings/bankroll' document exists.</p>
-                                </div>
-                            `;
                         });
-
+                        
                     } catch (error) {
                         console.error("Error setting up bankroll data:", error);
-                        trackerSection.innerHTML = `
-                            <div class="text-center">
-                                <h2 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-8">The Bankroll Tracker</h2>
-                                <p class="text-lg text-red-400 mb-4">An error occurred during setup.</p>
-                                <p class="text-gray-400">Please check your console for more details.</p>
-                            </div>
-                        `;
                     }
                 } else {
                     console.log("User is not signed in.");
                 }
             });
-        } else {
-            console.warn("Firebase config is not available. The app is waiting for it to be provided by the environment.");
-            trackerSection.innerHTML = `
-                <div class="text-center">
-                    <h2 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-8">The Bankroll Tracker</h2>
-                    <p class="text-lg text-red-400 mb-4">Error: Firebase configuration is missing.</p>
-                    <p class="text-sm text-gray-500">Please provide your Firebase project's configuration.</p>
-                </div>
-            `;
         }
+        
+        // Call the setup function when the page loads
+        document.addEventListener('DOMContentLoaded', setupFirebase);
     </script>
 
     <!-- Header -->
@@ -219,18 +203,15 @@
                 <h2 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-8">The Bankroll Tracker</h2>
                 
                 <!-- Bankroll Progress Bar - Clickable -->
-                <a href="profits.html" class="block w-full max-w-2xl mx-auto mb-12 transform transition-transform duration-300 hover:scale-105">
+                <a href="profits.html" class="block w-full max-w-2xl mx-auto mb-4 transform transition-transform duration-300 hover:scale-105">
                     <div class="progress-container">
                         <div id="progress-bar" class="progress-bar absolute" style="width: 0%;"></div>
                         <div class="absolute w-full h-full flex items-center justify-between px-4">
                             <span id="progress-text" class="text-white text-lg font-bold">0.00%</span>
-                            <span id="bankroll-amount" class="text-white text-lg font-bold">1 / 100,000</span>
+                            <span id="bankroll-amount" class="text-white text-lg font-bold">$1 / $100,000</span>
                         </div>
                     </div>
                 </a>
-                <p class="text-sm text-gray-400 mt-4">
-                    Note: The `profits.html` link is not yet functional. We can create that page next if you'd like.
-                </p>
             </div>
         </section>
         
@@ -304,6 +285,7 @@
     <footer class="bg-gray-900 py-6 px-6 text-center text-gray-500 text-sm">
         <p>&copy; 2025 Mr Bust Poker. All Rights Reserved.</p>
         <p>A project by Mapz Poker</p>
+        <p class="mt-2 text-xs" id="user-id-el"></p>
     </footer>
 
 </body>
