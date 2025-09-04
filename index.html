@@ -95,7 +95,7 @@
                     userIdEl.textContent = `User ID: ${userId}`;
                     
                     // CRITICAL FIX: The path must be consistent with the update script
-                    const bankrollRef = doc(db, "artifacts", appId, "public", "data", "bankroll", "bankroll");
+                    const bankrollRef = doc(db, "artifacts", appId, "public", "data", "bankrollChallenge", "bankroll");
 
                     try {
                         // First, ensure the document exists.
