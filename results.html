@@ -10,13 +10,31 @@
         body { font-family: 'Inter', sans-serif; background-color: #1a202c; color: #e2e8f0; }
         .table-container { background-color: #2d3748; }
         thead { background-color: #4a5568; }
+        /* Copied styles from index.html for the tracker */
+        .progress-container {
+            height: 2rem;
+            background-color: #374151;
+            border-radius: 9999px;
+            overflow: hidden;
+            position: relative;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #f59e0b;
+            transition: width 0.5s ease-in-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #1a202c;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200">
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, collection, query, orderBy, onSnapshot, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDvMPnxseByM6LxoJJXTZttLPmyfE187LY",
@@ -30,11 +48,44 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+
+        // --- Elements for the Results Table ---
         const resultsLogEl = document.getElementById('results-log');
 
+        // --- Elements for the Bankroll Tracker ---
+        const bankrollAmountEl = document.getElementById('bankroll-amount');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const bankrollGoal = 100000;
+
+        // --- Function to update the Bankroll Tracker display ---
+        function updateTrackerDisplay(currentBankroll) {
+            const progressPercentage = (currentBankroll / bankrollGoal) * 100;
+            progressBar.style.width = `${progressPercentage.toFixed(2)}%`;
+            progressText.textContent = `${progressPercentage.toFixed(2)}%`;
+            bankrollAmountEl.textContent = `$${Math.floor(currentBankroll)} / $${bankrollGoal}`;
+        }
+        
+        // --- Listener for the main bankroll document ---
+        function listenForBankroll() {
+            const appId = 'mrbustpoker-tracker';
+            const bankrollRef = doc(db, "trackers", appId);
+            onSnapshot(bankrollRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    const currentBankroll = snapshot.data().currentBankroll;
+                    updateTrackerDisplay(currentBankroll);
+                } else {
+                    console.log("Tracker document not found.");
+                    updateTrackerDisplay(0);
+                }
+            }, (error) => {
+                console.error("Error fetching bankroll tracker data:", error);
+            });
+        }
+
+        // --- Listener for the results history table ---
         function listenForResults() {
             const resultsQuery = query(collection(db, "results"), orderBy("timestamp", "desc"));
-
             onSnapshot(resultsQuery, (snapshot) => {
                 resultsLogEl.innerHTML = ''; 
                 if (snapshot.empty) {
@@ -60,13 +111,17 @@
             });
         }
 
-        document.addEventListener('DOMContentLoaded', listenForResults);
+        // --- Initialize both listeners when the page loads ---
+        document.addEventListener('DOMContentLoaded', () => {
+            listenForBankroll();
+            listenForResults();
+        });
     </script>
 
     <header class="bg-gray-800 bg-opacity-70 backdrop-blur-sm shadow-lg w-full z-50">
        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
             <a href="index.html" class="flex items-center space-x-2">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-20 h-20"><path d="M50 10 L80 40 L70 40 L70 70 L50 90 L30 70 L30 40 L20 40 Z" fill="gold" /></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="-15 -5 130 130" class="w-20 h-20"><path d="M50 10 L80 40 L70 40 L70 70 L50 90 L30 70 L30 40 L20 40 Z" fill="gold" /></svg>
             </a>
             <div class="flex items-center space-x-6">
                  <a href="https://www.youtube.com/@mrbustpoker" target="_blank" class="text-white hover:text-yellow-400">YouTube</a>
@@ -78,8 +133,22 @@
 
     <main class="py-20 px-6">
         <div class="container mx-auto max-w-4xl">
-            <h1 class="text-4xl md:text-5xl font-bold text-yellow-400 text-center mb-8">Bankroll History</h1>
+            <h1 class="text-4xl md:text-5xl font-bold text-yellow-400 text-center mb-12">Bankroll History</h1>
             
+            <!-- START: Added Bankroll Tracker Section -->
+            <section id="tracker" class="mb-12">
+                <div class="w-full max-w-2xl mx-auto">
+                    <div class="progress-container">
+                        <div id="progress-bar" class="progress-bar absolute" style="width: 0%;"></div>
+                        <div class="absolute w-full h-full flex items-center justify-between px-4">
+                            <span id="progress-text" class="text-white text-lg font-bold">0.00%</span>
+                            <span id="bankroll-amount" class="text-white text-lg font-bold">$0 / $100,000</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <!-- END: Added Bankroll Tracker Section -->
+
             <div class="table-container rounded-lg shadow-lg overflow-hidden">
                 <table class="w-full text-left">
                     <thead class="text-gray-300 uppercase text-sm">
@@ -104,4 +173,5 @@
 
 </body>
 </html>
+
 
