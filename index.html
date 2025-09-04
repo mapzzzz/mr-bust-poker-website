@@ -47,7 +47,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, setDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
         // Global variables provided by the Canvas environment
@@ -94,25 +94,12 @@
                     console.log("User authenticated:", userId);
                     userIdEl.textContent = `User ID: ${userId}`;
                     
-                    // CRITICAL FIX: The path is now set to read from the 'bankroll' document
-                    // inside the 'bankroll' collection as specified by the user.
                     const bankrollRef = doc(db, "artifacts", appId, "public", "data", "bankroll", "bankroll");
 
                     try {
-                        // First, ensure the document exists.
-                        const docSnap = await getDoc(bankrollRef);
-                        if (!docSnap.exists()) {
-                            await setDoc(bankrollRef, {
-                                currentBankroll: startingBankroll,
-                                lastUpdated: serverTimestamp()
-                            });
-                            console.log("Initial bankroll document created successfully.");
-                        } else {
-                            console.log("Bankroll document already exists.");
-                        }
-
-                        // Now, set up the real-time listener.
-                        onSnapshot(bankrollRef, (snapshot) => {
+                        // Set up the real-time listener.
+                        // This will listen for the document and create it if it doesn't exist.
+                        onSnapshot(bankrollRef, async (snapshot) => {
                             if (snapshot.exists()) {
                                 const data = snapshot.data();
                                 const currentBankroll = data.currentBankroll;
@@ -125,10 +112,13 @@
                                 bankrollAmountEl.textContent = `$${currentBankroll.toFixed(0)} / $${bankrollGoal}`;
                                 console.log(`Bankroll updated to: ${currentBankroll}`);
                             } else {
-                                console.warn("Bankroll document no longer exists.");
-                                bankrollAmountEl.textContent = `$0 / $${bankrollGoal}`;
-                                progressBar.style.width = `0%`;
-                                progressText.textContent = `0.00%`;
+                                // If the document does not exist, create it with the starting bankroll
+                                console.log("Bankroll document not found. Creating a new one...");
+                                await setDoc(bankrollRef, {
+                                    currentBankroll: startingBankroll,
+                                    lastUpdated: serverTimestamp()
+                                });
+                                console.log("Initial bankroll document created successfully.");
                             }
                         }, (error) => {
                             console.error("Error fetching bankroll data:", error);
