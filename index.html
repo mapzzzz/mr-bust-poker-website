@@ -94,7 +94,7 @@
                     console.log("User authenticated:", userId);
                     userIdEl.textContent = `User ID: ${userId}`;
                     
-                    // CRITICAL FIX: The path must be consistent with the update script
+                    // CORRECT PATH: The path is updated to read from the bankroll document
                     const bankrollRef = doc(db, "artifacts", appId, "public", "data", "bankrollChallenge", "bankroll");
 
                     try {
