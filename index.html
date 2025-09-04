@@ -94,8 +94,9 @@
                     console.log("User authenticated:", userId);
                     userIdEl.textContent = `User ID: ${userId}`;
                     
-                    // CORRECT PATH: The path is updated to read from the bankroll document
-                    const bankrollRef = doc(db, "artifacts", appId, "public", "data", "bankrollChallenge", "bankroll");
+                    // CRITICAL FIX: The path is now set to read from the 'bankroll' document
+                    // inside the 'bankroll' collection as specified by the user.
+                    const bankrollRef = doc(db, "artifacts", appId, "public", "data", "bankroll", "bankroll");
 
                     try {
                         // First, ensure the document exists.
