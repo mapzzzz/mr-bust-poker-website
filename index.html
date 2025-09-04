@@ -13,14 +13,11 @@
             color: #e2e8f0;
         }
         .bg-hero {
-            background-image: url('https://images.unsplash.com/photo-1594916847055-649479b1836a?q=80&w=2670&auto=format&fit=crop&ixlib-rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%D%D');
+            background-image: url('https://images.unsplash.com/photo-1594916847055-649479b1836a?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D');
             background-position: center;
             background-size: cover;
             background-blend-mode: multiply;
             background-color: rgba(13, 19, 27, 0.7);
-        }
-        .text-shadow-custom {
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
         }
         .progress-container {
             height: 2rem;
@@ -43,13 +40,11 @@
 </head>
 <body class="bg-gray-900 text-gray-200">
 
-    <!-- ✅ START: FIREBASE SCRIPT WITH YOUR CONFIG -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, doc, onSnapshot, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-        // Your specific Firebase configuration has been added here.
         const firebaseConfig = {
             apiKey: "AIzaSyDvMPnxseByM6LxoJJXTZttLPmyfE187LY",
             authDomain: "mrbustpoker-89df5.firebaseapp.com",
@@ -65,7 +60,6 @@
         const progressBar = document.getElementById('progress-bar');
         const progressText = document.getElementById('progress-text');
         const userIdEl = document.getElementById('user-id-el');
-        const trackerSection = document.getElementById('tracker-section');
 
         const startingBankroll = 1;
         const bankrollGoal = 100000;
@@ -101,48 +95,14 @@
                                 progressBar.style.width = `${progressPercentage.toFixed(2)}%`;
                                 progressText.textContent = `${progressPercentage.toFixed(2)}%`;
                                 bankrollAmountEl.textContent = `$${Math.floor(currentBankroll)} / $${bankrollGoal}`;
-                                console.log(`Live update: Bankroll is now $${currentBankroll}`);
                             } else {
-                                console.log("Bankroll document not found. Attempting to create it...");
-                                try {
-                                    await setDoc(bankrollRef, {
-                                        currentBankroll: startingBankroll,
-                                        lastUpdated: serverTimestamp()
-                                    });
-                                } catch (writeError) {
-                                    // This catch block will likely fire if write is also disallowed.
-                                    console.error("Failed to create initial bankroll document.", writeError);
-                                }
+                                await setDoc(bankrollRef, {
+                                    currentBankroll: startingBankroll,
+                                    lastUpdated: serverTimestamp()
+                                });
                             }
                         }, (error) => {
                             console.error("Error listening to bankroll data:", error);
-                            // ✅ FIX: Display a clear error message on the webpage itself.
-                            if (error.code === 'permission-denied') {
-                                trackerSection.innerHTML = `
-                                    <div class="bg-red-900 border border-red-500 text-white p-6 rounded-lg max-w-2xl mx-auto text-center">
-                                        <h3 class="text-2xl font-bold mb-2">Firestore Permission Error</h3>
-                                        <p class="text-red-200 mb-4">The website is being blocked by your database's security rules.</p>
-                                        <div class="text-left mt-4 bg-gray-900 p-4 rounded-md">
-                                            <p class="font-bold mb-2">To Fix This:</p>
-                                            <ol class="list-decimal list-inside space-y-2 text-sm">
-                                                <li>Go to your Firebase Console → Firestore Database → <strong>Rules</strong> tab.</li>
-                                                <li>Replace the existing rules with the code below.</li>
-                                                <li>Click <strong>Publish</strong>. The website will update automatically.</li>
-                                            </ol>
-                                            <pre class="mt-4 p-3 bg-black rounded-md overflow-x-auto text-sm font-mono"><code>rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    // This rule allows anyone to READ the tracker data.
-    match /trackers/{trackerId} {
-      allow read: if true;
-      allow write: if false; // Deny writing from browser for security.
-    }
-  }
-}</code></pre>
-                                        </div>
-                                    </div>
-                                `;
-                            }
                         });
                         
                     } catch (error) {
@@ -156,10 +116,7 @@ service cloud.firestore {
         
         document.addEventListener('DOMContentLoaded', setupFirebase);
     </script>
-    <!-- END: FIREBASE SCRIPT SECTION -->
 
-
-    <!-- Header -->
     <header class="bg-gray-800 bg-opacity-70 backdrop-blur-sm shadow-lg fixed w-full z-50">
         <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
             <a href="https://www.youtube.com/@mrbustpoker" target="_blank" class="flex items-center space-x-2">
@@ -168,26 +125,17 @@ service cloud.firestore {
                 </svg>
             </a>
             <div class="flex items-center space-x-6">
-                <a href="https://www.youtube.com/@mrbustpoker" target="_blank" class="text-white hover:text-yellow-400 transition-colors duration-300">
-                    YouTube
-                </a>
-                <a href="https://x.com/mrbustpoker" target="_blank" class="text-white hover:text-yellow-400 transition-colors duration-300">
-                    X
-                </a>
-                <a href="https://twitch.tv/mrbustpoker" target="_blank" class="text-white hover:text-yellow-400 transition-colors duration-300">
-                    Twitch
-                </a>
+                <a href="https://www.youtube.com/@mrbustpoker" target="_blank" class="text-white hover:text-yellow-400">YouTube</a>
+                <a href="https://x.com/mrbustpoker" target="_blank" class="text-white hover:text-yellow-400">X</a>
+                <a href="https://twitch.tv/mrbustpoker" target="_blank" class="text-white hover:text-yellow-400">Twitch</a>
             </div>
         </nav>
     </header>
 
-    <!-- Hero Section -->
     <main>
         <div class="bg-hero min-h-screen flex items-center justify-center p-6">
             <div class="text-center max-w-4xl space-y-8 p-8 md:p-12 bg-gray-800 bg-opacity-80 rounded-2xl shadow-xl border border-yellow-400 border-opacity-30">
-                <h1 class="text-4xl md:text-6xl font-extrabold text-white leading-tight">
-                    From Bust to Building
-                </h1>
+                <h1 class="text-4xl md:text-6xl font-extrabold text-white leading-tight">From Bust to Building</h1>
                 <p class="text-xl text-yellow-200">A project by Mapz Poker</p>
                 <p class="text-lg md:text-xl text-gray-300">
                     This is the unfiltered journey of a poker player on the grind. Follow the highs, the lows, the lessons learned, and the ultimate fight to turn a bust into a breakthrough.
@@ -198,7 +146,6 @@ service cloud.firestore {
             </div>
         </div>
 
-        <!-- About Section -->
         <section id="about" class="py-20 px-6">
             <div class="container mx-auto max-w-5xl space-y-12">
                 <div class="text-center">
@@ -210,12 +157,10 @@ service cloud.firestore {
             </div>
         </section>
         
-        <!-- Tracker Section -->
         <section id="tracker" class="py-20 px-6 bg-gray-800">
             <div class="container mx-auto max-w-5xl text-center" id="tracker-section">
                 <h2 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-8">The Bankroll Tracker</h2>
-                
-                <a href="#" class="block w-full max-w-2xl mx-auto mb-4 transform transition-transform duration-300 hover:scale-105" onclick="event.preventDefault();">
+                <a href="results.html" class="block w-full max-w-2xl mx-auto mb-4 transform transition-transform duration-300 hover:scale-105">
                     <div class="progress-container">
                         <div id="progress-bar" class="progress-bar absolute" style="width: 0%;"></div>
                         <div class="absolute w-full h-full flex items-center justify-between px-4">
@@ -227,39 +172,29 @@ service cloud.firestore {
             </div>
         </section>
         
-        <!-- Challenges Section -->
         <section id="challenges" class="py-20 px-6">
             <div class="container mx-auto max-w-5xl space-y-12 text-center">
                 <h2 class="text-3xl md:text-4xl font-bold text-yellow-400">The Challenges</h2>
-                <p class="text-lg text-gray-300 max-w-3xl mx-auto">
-                    These are the core challenges driving the channel.
-                </p>
+                <p class="text-lg text-gray-300 max-w-3xl mx-auto">These are the core challenges driving the channel.</p>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div class="bg-gray-700 p-8 rounded-2xl shadow-lg border border-gray-600 space-y-4">
                         <div class="text-5xl text-yellow-400 mb-4">🏆</div>
                         <h3 class="text-2xl font-bold text-white">The $100k Challenge</h3>
-                        <p class="text-gray-300">
-                            The ultimate bankroll challenge. Follow me as I grind my way from my starting bankroll to reach the ultimate goal of $100,000.
-                        </p>
+                        <p class="text-gray-300">The ultimate bankroll challenge. Follow me as I grind my way from my starting bankroll to reach the ultimate goal of $100,000.</p>
                     </div>
                     <div class="bg-gray-700 p-8 rounded-2xl shadow-lg border border-gray-600 space-y-4">
                         <div class="text-5xl text-yellow-400 mb-4">⏱️</div>
                         <h3 class="text-2xl font-bold text-white">A Million Hands in a Year</h3>
-                        <p class="text-gray-300">
-                            A test of discipline, endurance, and skill. This extreme volume grind is the engine of my journey and the foundation of my professional poker career.
-                        </p>
+                        <p class="text-gray-300">A test of discipline, endurance, and skill. This extreme volume grind is the engine of my journey and the foundation of my professional poker career.</p>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- Mini-Challenges Section -->
         <section id="mini-challenges" class="py-20 px-6 bg-gray-800">
             <div class="container mx-auto max-w-5xl space-y-12 text-center">
                 <h2 class="text-3xl md:text-4xl font-bold text-yellow-400">Mini Challenges</h2>
-                <p class="text-lg text-gray-300 max-w-3xl mx-auto">
-                    In between the major challenges, I'll be taking on smaller, more focused goals to keep the grind fresh and the content engaging.
-                </p>
+                <p class="text-lg text-gray-300 max-w-3xl mx-auto">In between the major challenges, I'll be taking on smaller, more focused goals to keep the grind fresh and the content engaging.</p>
                 <div class="bg-gray-700 p-8 rounded-2xl shadow-lg border border-gray-600">
                     <ul class="text-lg text-gray-300 list-disc list-inside space-y-3 text-left max-w-xl mx-auto">
                         <li>**Lockdown Challenges:** Focused grinds to hit a specific goal in a short, intense period.</li>
@@ -272,26 +207,19 @@ service cloud.firestore {
             </div>
         </section>
 
-        <!-- Call to Action Section -->
         <section id="youtube" class="py-20 px-6">
             <div class="container mx-auto max-w-5xl text-center">
                 <div class="bg-gray-700 p-8 md:p-12 rounded-2xl shadow-lg border border-green-500 border-opacity-30">
                     <h2 class="text-3xl md:text-4xl font-bold text-green-500 mb-4">Join the Journey</h2>
-                    <p class="text-lg text-gray-300 mb-6">
-                        Don't miss a single hand. Subscribe to the Mr Bust Poker channel to follow the entire journey, get strategy tips, and watch the transformation unfold.
-                    </p>
+                    <p class="text-lg text-gray-300 mb-6">Don't miss a single hand. Subscribe to the Mr Bust Poker channel to follow the entire journey, get strategy tips, and watch the transformation unfold.</p>
                     <a href="https://www.youtube.com/@mrbustpoker" target="_blank" class="inline-block bg-red-600 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-red-700 transform transition-transform duration-300 hover:scale-105">
-                        <div class="flex items-center justify-center space-x-2">
-                            <span>Subscribe on YouTube</span>
-                        </div>
+                        <div class="flex items-center justify-center space-x-2"><span>Subscribe on YouTube</span></div>
                     </a>
                 </div>
             </div>
         </section>
-
     </main>
 
-    <!-- Footer -->
     <footer class="bg-gray-900 py-6 px-6 text-center text-gray-500 text-sm">
         <p>&copy; 2025 Mr Bust Poker. All Rights Reserved.</p>
         <p>A project by Mapz Poker</p>
