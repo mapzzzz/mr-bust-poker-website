@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale-1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mr Bust Poker - The Journey</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M50 10 L80 40 L70 40 L70 70 L50 90 L30 70 L30 40 L20 40 Z' fill='gold'/></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -14,7 +14,7 @@
             color: #e2e8f0;
         }
         .bg-hero {
-            background-image: url('https://images.unsplash.com/photo-1594916847055-649479b1836a?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D');
+            background-image: url('https://images.unsplash.com/photo-159491684T055-649479b1836a?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D');
             background-position: center;
             background-size: cover;
             background-blend-mode: multiply;
@@ -61,8 +61,8 @@
         const progressBar = document.getElementById('progress-bar');
         const progressText = document.getElementById('progress-text');
         const userIdEl = document.getElementById('user-id-el');
+        const streakDisplayEl = document.getElementById('streak-display');
 
-        const startingBankroll = 1;
         const bankrollGoal = 100000;
         
         async function setupFirebase() {
@@ -79,7 +79,6 @@
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
                     const userId = user.uid;
-                    console.log("User authenticated with ID:", userId);
                     userIdEl.textContent = `Session ID: ${userId.substring(0, 8)}...`;
                     
                     const appId = 'mrbustpoker-tracker';
@@ -89,25 +88,29 @@
                         onSnapshot(bankrollRef, async (snapshot) => {
                             if (snapshot.exists()) {
                                 const data = snapshot.data();
-                                const currentBankroll = data.currentBankroll;
+                                const currentBankroll = data.currentBankroll || 1;
+                                const currentStreak = data.currentStreak || 0;
                                 
                                 const progressPercentage = (currentBankroll / bankrollGoal) * 100;
-                                
                                 progressBar.style.width = `${progressPercentage.toFixed(2)}%`;
                                 progressText.textContent = `${progressPercentage.toFixed(2)}%`;
                                 bankrollAmountEl.textContent = `$${Math.floor(currentBankroll)} / $${bankrollGoal}`;
+
+                                streakDisplayEl.innerHTML = `🔥 <span class="font-bold">${currentStreak}</span> Day Streak`;
+
                             } else {
                                 await setDoc(bankrollRef, {
-                                    currentBankroll: startingBankroll,
+                                    currentBankroll: 1,
+                                    currentStreak: 0,
                                     lastUpdated: serverTimestamp()
                                 });
                             }
                         }, (error) => {
-                            console.error("Error listening to bankroll data:", error);
+                            console.error("Error listening to tracker data:", error);
                         });
                         
                     } catch (error) {
-                        console.error("Error setting up bankroll listener:", error);
+                        console.error("Error setting up tracker listener:", error);
                     }
                 } else {
                     console.log("User is not signed in.");
@@ -132,40 +135,51 @@
     </header>
 
     <main>
-        <div class="bg-hero min-h-screen flex items-center justify-center p-6">
-            <div class="text-center max-w-4xl space-y-8 p-8 md:p-12 bg-gray-800 bg-opacity-80 rounded-2xl shadow-xl border border-yellow-400 border-opacity-30">
+        <!-- Hero Section with Integrated Tracker -->
+        <div class="bg-hero min-h-screen flex items-center justify-center p-6 pt-24">
+            <div class="text-center max-w-4xl space-y-6 p-8 md:p-12 bg-gray-800 bg-opacity-80 rounded-2xl shadow-xl border border-yellow-400 border-opacity-30">
+                
                 <h1 class="text-4xl md:text-6xl font-extrabold text-white leading-tight">From Bust to Building</h1>
                 <p class="text-xl text-yellow-200">A project by Mapz Poker</p>
-                <p class="text-lg md:text-xl text-gray-300">
+                <p class="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto">
                     This is the unfiltered journey of a poker player on the grind. Follow the highs, the lows, the lessons learned, and the ultimate fight to turn a bust into a breakthrough.
                 </p>
-                <a href="https://www.youtube.com/@mrbustpoker" target="_blank" class="inline-block bg-yellow-400 text-gray-900 font-bold py-3 px-8 rounded-full shadow-lg hover:bg-yellow-500 transform transition-transform duration-300 hover:scale-105">
-                    Follow the Journey on YouTube
-                </a>
+
+                <!-- Integrated Dashboard -->
+                <div class="pt-4">
+                    <h2 class="text-2xl md:text-3xl font-bold text-yellow-400 mb-6">The Challenge Dashboard</h2>
+                    <div class="max-w-2xl mx-auto space-y-4">
+                        <a href="results.html" class="block w-full transform transition-transform duration-300 hover:scale-105">
+                            <div class="progress-container">
+                                <div id="progress-bar" class="progress-bar absolute" style="width: 0%;"></div>
+                                <div class="absolute w-full h-full flex items-center justify-between px-4">
+                                    <span id="progress-text" class="text-white text-lg font-bold">0.00%</span>
+                                    <span id="bankroll-amount" class="text-white text-lg font-bold">$1 / $100,000</span>
+                                </div>
+                            </div>
+                        </a>
+                        <div id="streak-display" class="text-2xl text-orange-400">
+                            🔥 <span class="font-bold">0</span> Day Streak
+                        </div>
+                    </div>
+                     <a href="results.html" class="text-yellow-400 hover:text-yellow-300 transition-colors duration-300 mt-4 inline-block">
+                        Click to view daily results
+                    </a>
+                </div>
             </div>
         </div>
 
-        <!-- MOVED UP: Tracker Section -->
-        <section id="tracker" class="py-20 px-6 bg-gray-800">
-            <div class="container mx-auto max-w-5xl text-center" id="tracker-section">
-                <h2 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-8">The Bankroll Tracker</h2>
-                <a href="results.html" class="block w-full max-w-2xl mx-auto mb-4 transform transition-transform duration-300 hover:scale-105">
-                    <div class="progress-container">
-                        <div id="progress-bar" class="progress-bar absolute" style="width: 0%;"></div>
-                        <div class="absolute w-full h-full flex items-center justify-between px-4">
-                            <span id="progress-text" class="text-white text-lg font-bold">0.00%</span>
-                            <span id="bankroll-amount" class="text-white text-lg font-bold">$1 / $100,000</span>
-                        </div>
-                    </div>
-                </a>
-                <a href="results.html" class="text-yellow-400 hover:text-yellow-300 transition-colors duration-300 mt-2 inline-block">
-                    Click to view daily results
+        <!-- New Call to Action Bar -->
+        <section class="bg-yellow-400 py-6">
+            <div class="container mx-auto text-center">
+                <a href="https://www.youtube.com/@mrbustpoker" target="_blank" class="inline-block bg-gray-900 text-yellow-400 font-bold py-4 px-10 rounded-full shadow-lg hover:bg-gray-800 transform transition-all duration-300 hover:scale-105 text-lg">
+                    Follow the Journey on YouTube
                 </a>
             </div>
         </section>
 
         <!-- About Section -->
-        <section id="about" class="py-20 px-6">
+        <section id="about" class="py-20 px-6 bg-gray-700">
             <div class="container mx-auto max-w-5xl space-y-12">
                 <div class="text-center">
                     <h2 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-4">The Story</h2>
@@ -176,53 +190,92 @@
             </div>
         </section>
         
-        <!-- Challenges Section -->
+        <!-- Main Challenges Section -->
         <section id="challenges" class="py-20 px-6">
+             <div class="container mx-auto max-w-5xl space-y-12 text-center">
+                 <h2 class="text-3xl md:text-4xl font-bold text-yellow-400">The Challenges</h2>
+                 <p class="text-lg text-gray-300 max-w-3xl mx-auto">
+                     These are the core challenges driving the channel.
+                 </p>
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                     <div class="bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-600 space-y-4">
+                         <div class="text-5xl text-yellow-400 mb-4">🏆</div>
+                         <h3 class="text-2xl font-bold text-white">The $100k Challenge</h3>
+                         <p class="text-gray-300">
+                             The ultimate bankroll challenge. Follow me as I grind my way from my starting bankroll to reach the ultimate goal of $100,000.
+                         </p>
+                     </div>
+                     <div class="bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-600 space-y-4">
+                         <div class="text-5xl text-yellow-400 mb-4">⏱️</div>
+                         <h3 class="text-2xl font-bold text-white">A Million Hands in a Year</h3>
+                         <p class="text-gray-300">
+                             A test of discipline, endurance, and skill. This extreme volume grind is the engine of my journey and the foundation of my professional poker career.
+                         </p>
+                     </div>
+                 </div>
+             </div>
+        </section>
+
+        <!-- Mini-Challenges Section -->
+        <section id="mini-challenges" class="py-20 px-6 bg-gray-700">
             <div class="container mx-auto max-w-5xl space-y-12 text-center">
-                <h2 class="text-3xl md:text-4xl font-bold text-yellow-400">The Challenges</h2>
-                <p class="text-lg text-gray-300 max-w-3xl mx-auto">These are the core challenges driving the channel.</p>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div class="bg-gray-700 p-8 rounded-2xl shadow-lg border border-gray-600 space-y-4">
-                        <div class="text-5xl text-yellow-400 mb-4">🏆</div>
-                        <h3 class="text-2xl font-bold text-white">The $100k Challenge</h3>
-                        <p class="text-gray-300">The ultimate bankroll challenge. Follow me as I grind my way from my starting bankroll to reach the ultimate goal of $100,000.</p>
+                <h2 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-4">Mini Challenges</h2>
+                <p class="text-lg text-gray-300 max-w-3xl mx-auto mb-10">
+                    In between the major challenges, I'll be taking on smaller, focused goals to keep the grind fresh and the content engaging.
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
+                    <!-- Item 1 -->
+                    <div class="bg-gray-800 p-6 rounded-lg shadow-lg flex items-start space-x-4 hover:bg-gray-700 transition-colors">
+                        <div class="text-3xl text-yellow-400 mt-1">🎯</div>
+                        <div>
+                            <h3 class="font-bold text-white text-lg">Lockdown Challenges</h3>
+                            <p class="text-gray-400 text-sm">Focused grinds to hit a specific goal in a short, intense period.</p>
+                        </div>
                     </div>
-                    <div class="bg-gray-700 p-8 rounded-2xl shadow-lg border border-gray-600 space-y-4">
-                        <div class="text-5xl text-yellow-400 mb-4">⏱️</div>
-                        <h3 class="text-2xl font-bold text-white">A Million Hands in a Year</h3>
-                        <p class="text-gray-300">A test of discipline, endurance, and skill. This extreme volume grind is the engine of my journey and the foundation of my professional poker career.</p>
+                    <!-- Item 2 -->
+                    <div class="bg-gray-800 p-6 rounded-lg shadow-lg flex items-start space-x-4 hover:bg-gray-700 transition-colors">
+                        <div class="text-3xl text-yellow-400 mt-1">⏱️</div>
+                        <div>
+                            <h3 class="font-bold text-white text-lg">Volume Challenges</h3>
+                            <p class="text-gray-400 text-sm">Pushing the limits of how many hands can be played in a set amount of time.</p>
+                        </div>
+                    </div>
+                    <!-- Item 3 -->
+                    <div class="bg-gray-800 p-6 rounded-lg shadow-lg flex items-start space-x-4 hover:bg-gray-700 transition-colors">
+                        <div class="text-3xl text-yellow-400 mt-1">💰</div>
+                        <div>
+                            <h3 class="font-bold text-white text-lg">Hourly Rate Challenges</h3>
+                            <p class="text-gray-400 text-sm">Can I make $X per hour at a specific stake for a set number of hours?</p>
+                        </div>
+                    </div>
+                    <!-- Item 4 -->
+                     <div class="bg-gray-800 p-6 rounded-lg shadow-lg flex items-start space-x-4 hover:bg-gray-700 transition-colors">
+                        <div class="text-3xl text-yellow-400 mt-1">🌐</div>
+                        <div>
+                            <h3 class="font-bold text-white text-lg">Testing New Sites</h3>
+                            <p class="text-gray-400 text-sm">Exploring and reviewing new online poker rooms and apps.</p>
+                        </div>
+                    </div>
+                    <!-- Item 5 -->
+                     <div class="bg-gray-800 p-6 rounded-lg shadow-lg flex items-start space-x-4 hover:bg-gray-700 transition-colors">
+                        <div class="text-3xl text-yellow-400 mt-1">✈️</div>
+                        <div>
+                            <h3 class="font-bold text-white text-lg">Travel Grinds</h3>
+                            <p class="text-gray-400 text-sm">Mixing poker with new locations, vlogging the entire experience.</p>
+                        </div>
+                    </div>
+                     <!-- Item 6 -->
+                     <div class="bg-gray-800 p-6 rounded-lg shadow-lg flex items-start space-x-4 hover:bg-gray-700 transition-colors">
+                        <div class="text-3xl text-yellow-400 mt-1">📈</div>
+                        <div>
+                            <h3 class="font-bold text-white text-lg">Shot Taking</h3>
+                            <p class="text-gray-400 text-sm">Aggressively moving up to the next stake and documenting the results.</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <section id="mini-challenges" class="py-20 px-6 bg-gray-800">
-            <div class="container mx-auto max-w-5xl space-y-12 text-center">
-                <h2 class="text-3xl md:text-4xl font-bold text-yellow-400">Mini Challenges</h2>
-                <p class="text-lg text-gray-300 max-w-3xl mx-auto">In between the major challenges, I'll be taking on smaller, more focused goals to keep the grind fresh and the content engaging.</p>
-                <div class="bg-gray-700 p-8 rounded-2xl shadow-lg border border-gray-600">
-                    <ul class="text-lg text-gray-300 list-disc list-inside space-y-3 text-left max-w-xl mx-auto">
-                        <li>**Lockdown Challenges:** Focused grinds to hit a specific goal in a short, intense period.</li>
-                        <li>**Volume Challenges:** Pushing the limits of how many hands can be played in a set amount of time.</li>
-                        <li>**Hourly Challenges:** Can I make $X per hour at a specific stake?</li>
-                        <li>**Testing New Sites:** Exploring and reviewing new online poker rooms.</li>
-                        <li>**Travel Grinds:** Mixing poker with new locations and vlogs.</li>
-                    </ul>
-                </div>
-            </div>
-        </section>
-
-        <section id="youtube" class="py-20 px-6">
-            <div class="container mx-auto max-w-5xl text-center">
-                <div class="bg-gray-700 p-8 md:p-12 rounded-2xl shadow-lg border border-green-500 border-opacity-30">
-                    <h2 class="text-3xl md:text-4xl font-bold text-green-500 mb-4">Join the Journey</h2>
-                    <p class="text-lg text-gray-300 mb-6">Don't miss a single hand. Subscribe to the Mr Bust Poker channel to follow the entire journey, get strategy tips, and watch the transformation unfold.</p>
-                    <a href="https://www.youtube.com/@mrbustpoker" target="_blank" class="inline-block bg-red-600 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-red-700 transform transition-transform duration-300 hover:scale-105">
-                        <div class="flex items-center justify-center space-x-2"><span>Subscribe on YouTube</span></div>
-                    </a>
-                </div>
-            </div>
-        </section>
     </main>
 
     <footer class="bg-gray-900 py-6 px-6 text-center text-gray-500 text-sm">
