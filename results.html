@@ -8,9 +8,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #1a202c; color: #e2e8f0; }
-        .table-container { background-color: #2d3748; }
-        thead { background-color: #4a5568; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c;
+            color: #e2e8f0;
+        }
         .progress-container {
             height: 2rem;
             background-color: #374151;
@@ -28,13 +30,35 @@
             color: #1a202c;
             font-weight: 600;
         }
+        /* Style for the stat boxes */
+        .stat-box {
+            background-color: #374151; /* gray-700 */
+            border: 1px solid #4B5563; /* gray-600 */
+            border-radius: 1rem; /* rounded-2xl */
+            padding: 1.5rem; /* p-6 */
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-lg */
+        }
+        .stat-box-title {
+            color: #9CA3AF; /* gray-400 */
+            font-size: 0.875rem; /* text-sm */
+            font-weight: 600; /* font-semibold */
+            letter-spacing: 0.05em; /* tracking-wider */
+            text-transform: uppercase;
+        }
+        .stat-box-number {
+            color: #FFFFFF; /* white */
+            font-size: 2.25rem; /* text-4xl */
+            font-weight: 700; /* font-bold */
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200">
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getFirestore, collection, query, orderBy, onSnapshot, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, collection, query, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDvMPnxseByM6LxoJJXTZttLPmyfE187LY",
@@ -46,167 +70,224 @@
             measurementId: "G-E3LFRJLWW5"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        const resultsLogEl = document.getElementById('results-log');
+        let app, db, auth;
         const bankrollAmountEl = document.getElementById('bankroll-amount');
         const progressBar = document.getElementById('progress-bar');
         const progressText = document.getElementById('progress-text');
         const streakDisplayEl = document.getElementById('streak-display');
+        const resultsTableBody = document.getElementById('results-table-body');
         const winningDaysEl = document.getElementById('winning-days');
         const losingDaysEl = document.getElementById('losing-days');
+        // --- New Element ---
+        const daysMissedEl = document.getElementById('days-missed');
+
+
         const bankrollGoal = 100000;
 
-        function listenForTrackerData() {
+        async function setupFirebase() {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            
+            try {
+                await signInAnonymously(auth);
+            } catch (error) {
+                console.error("Anonymous authentication error:", error);
+            }
+
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    setupListeners();
+                }
+            });
+        }
+
+        function setupListeners() {
             const appId = 'mrbustpoker-tracker';
             const bankrollRef = doc(db, "trackers", appId);
+
+            // Listener for the main tracker (bankroll and streak)
             onSnapshot(bankrollRef, (snapshot) => {
                 if (snapshot.exists()) {
                     const data = snapshot.data();
                     const currentBankroll = data.currentBankroll || 1;
                     const currentStreak = data.currentStreak || 0;
-
+                    
                     const progressPercentage = (currentBankroll / bankrollGoal) * 100;
                     progressBar.style.width = `${progressPercentage.toFixed(2)}%`;
                     progressText.textContent = `${progressPercentage.toFixed(2)}%`;
                     bankrollAmountEl.textContent = `$${Math.floor(currentBankroll)} / $${bankrollGoal}`;
-                    
                     streakDisplayEl.innerHTML = `🔥 <span class="font-bold">${currentStreak}</span> Day Streak`;
                 }
             }, (error) => {
-                console.error("Error fetching tracker data:", error);
+                console.error("Error listening to tracker data:", error);
             });
-        }
 
-        function listenForResults() {
-            const resultsQuery = query(collection(db, "results"), orderBy("timestamp", "desc"));
-            onSnapshot(resultsQuery, (snapshot) => {
-                resultsLogEl.innerHTML = ''; 
-                const dailyNet = {};
+            // Listener for the results history
+            const resultsCollectionRef = collection(db, "results");
+            const q = query(resultsCollectionRef, orderBy("timestamp", "desc"));
+            
+            onSnapshot(q, (snapshot) => {
+                resultsTableBody.innerHTML = ''; // Clear old results
+                let winningDays = 0;
+                let losingDays = 0;
+                let dailySummary = {};
 
                 if (snapshot.empty) {
-                    resultsLogEl.innerHTML = `<tr><td colspan="2" class="text-center py-4">No results logged yet.</td></tr>`;
                     winningDaysEl.textContent = '0';
                     losingDaysEl.textContent = '0';
+                    daysMissedEl.textContent = '0';
                     return;
                 }
 
-                snapshot.forEach(doc => {
+                snapshot.docs.forEach(doc => {
                     const data = doc.data();
+                    const timestamp = data.timestamp.toDate();
+                    const dateString = timestamp.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
                     
-                    // --- Daily Net Calculation (for stats) ---
-                    if (data.type === 'add') {
-                        const dateKey = data.timestamp.toDate().toISOString().split('T')[0];
-                        if (!dailyNet[dateKey]) {
-                            dailyNet[dateKey] = 0;
-                        }
-                        dailyNet[dateKey] += data.amount;
-                    }
-
-                    // --- Table Population ---
-                    const displayDate = data.timestamp.toDate().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
-                    const amountClass = data.amount >= 0 ? 'text-green-400' : 'text-red-400';
-                    const formattedAmount = data.amount >= 0 ? `+$${data.amount.toFixed(2)}` : `-$${Math.abs(data.amount).toFixed(2)}`;
+                    // Populate the results table
                     const row = document.createElement('tr');
-                    row.className = 'border-b border-gray-600';
-                    row.innerHTML = `
-                        <td class="py-3 px-4">${displayDate}</td>
-                        <td class="py-3 px-4 font-bold ${amountClass} text-right">${formattedAmount}</td>
-                    `;
-                    resultsLogEl.appendChild(row);
+                    row.className = "bg-gray-800 border-b border-gray-700";
+                    
+                    const dateCell = document.createElement('td');
+                    dateCell.className = "px-6 py-4";
+                    dateCell.textContent = dateString;
+                    
+                    const resultCell = document.createElement('td');
+                    resultCell.className = `px-6 py-4 font-semibold ${data.amount >= 0 ? 'text-green-400' : 'text-red-400'}`;
+                    resultCell.textContent = `${data.amount >= 0 ? '+' : ''}$${data.amount.toFixed(2)}`;
+
+                    row.appendChild(dateCell);
+                    row.appendChild(resultCell);
+                    resultsTableBody.appendChild(row);
+
+                    // --- Calculate Daily Win/Loss ---
+                    if (data.type === 'add') {
+                        if (!dailySummary[dateString]) {
+                            dailySummary[dateString] = 0;
+                        }
+                        dailySummary[dateString] += data.amount;
+                    }
                 });
-                
-                // --- Calculate and Display Stats ---
-                let winningDays = 0;
-                let losingDays = 0;
-                for (const dateKey in dailyNet) {
-                    if (dailyNet[dateKey] > 0) {
+
+                // Tally winning/losing days
+                Object.values(dailySummary).forEach(total => {
+                    if (total > 0) {
                         winningDays++;
-                    } else if (dailyNet[dateKey] < 0) {
+                    } else if (total < 0) {
                         losingDays++;
                     }
-                }
+                });
+
                 winningDaysEl.textContent = winningDays;
                 losingDaysEl.textContent = losingDays;
 
+                // --- Calculate Days Missed ---
+                const firstEntryDate = snapshot.docs[snapshot.docs.length - 1].data().timestamp.toDate();
+                const today = new Date();
+                
+                // Set to midnight to compare dates only
+                firstEntryDate.setHours(0, 0, 0, 0);
+                today.setHours(0, 0, 0, 0);
+
+                // Calculate total days elapsed since the start
+                const diffTime = Math.abs(today.getTime() - firstEntryDate.getTime());
+                const totalDaysElapsed = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to be inclusive of the start day
+
+                const totalUniqueDaysPlayed = Object.keys(dailySummary).length;
+                const daysMissed = totalDaysElapsed - totalUniqueDaysPlayed;
+
+                daysMissedEl.textContent = daysMissed;
+
             }, (error) => {
-                console.error("Error fetching results:", error);
-                resultsLogEl.innerHTML = `<tr><td colspan="2" class="text-center py-4 text-red-400">Error loading results.</td></tr>`;
+                console.error("Error listening to results history:", error);
             });
         }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            listenForTrackerData();
-            listenForResults();
-        });
+        
+        document.addEventListener('DOMContentLoaded', setupFirebase);
     </script>
 
+    <!-- Header -->
     <header class="bg-gray-800 bg-opacity-70 backdrop-blur-sm shadow-lg w-full z-50">
-       <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
             <a href="index.html" class="flex items-center space-x-2">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-15 -5 130 130" class="w-20 h-20"><path d="M50 10 L80 40 L70 40 L70 70 L50 90 L30 70 L30 40 L20 40 Z" fill="gold" /></svg>
             </a>
             <div class="flex items-center space-x-6">
-                 <a href="https://www.youtube.com/@mrbustpoker" target="_blank" class="text-white hover:text-yellow-400">YouTube</a>
+                <a href="https://www.youtube.com/@mrbustpoker" target="_blank" class="text-white hover:text-yellow-400">YouTube</a>
                 <a href="https://x.com/mrbustpoker" target="_blank" class="text-white hover:text-yellow-400">X</a>
                 <a href="https://twitch.tv/mrbustpoker" target="_blank" class="text-white hover:text-yellow-400">Twitch</a>
             </div>
         </nav>
     </header>
 
-    <main class="py-20 px-6">
-        <div class="container mx-auto max-w-4xl">
-            <h1 class="text-4xl md:text-5xl font-bold text-yellow-400 text-center mb-12">Bankroll History</h1>
-            
-            <section id="dashboard" class="mb-12 max-w-2xl mx-auto space-y-4">
-                <!-- Bankroll Tracker -->
-                <div class="progress-container">
-                    <div id="progress-bar" class="progress-bar absolute" style="width: 0%;"></div>
-                    <div class="absolute w-full h-full flex items-center justify-between px-4">
-                        <span id="progress-text" class="text-white text-lg font-bold">0.00%</span>
-                        <span id="bankroll-amount" class="text-white text-lg font-bold">$0 / $100,000</span>
-                    </div>
-                </div>
-                <!-- Streak Display -->
-                <div id="streak-display" class="text-2xl text-orange-400 text-center">
-                    🔥 <span class="font-bold">0</span> Day Streak
-                </div>
-            </section>
+    <!-- Main Content -->
+    <main class="container mx-auto max-w-5xl p-6 pt-32">
 
-            <!-- Stats Section -->
-            <section id="stats" class="mb-12 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto text-center">
-                <div class="bg-gray-700 p-6 rounded-lg shadow-lg">
-                    <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider">Winning Days</h3>
-                    <p id="winning-days" class="text-4xl font-bold text-green-400">0</p>
+        <h1 class="text-4xl md:text-5xl font-extrabold text-yellow-400 text-center mb-10">Bankroll History</h1>
+        
+        <!-- Main Dashboard -->
+        <div class="max-w-2xl mx-auto space-y-4 mb-12">
+            <div class="progress-container">
+                <div id="progress-bar" class="progress-bar absolute" style="width: 0%;"></div>
+                <div class="absolute w-full h-full flex items-center justify-between px-4">
+                    <span id="progress-text" class="text-white text-lg font-bold">0.00%</span>
+                    <span id="bankroll-amount" class="text-white text-lg font-bold">$1 / $100,000</span>
                 </div>
-                <div class="bg-gray-700 p-6 rounded-lg shadow-lg">
-                    <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider">Losing Days</h3>
-                    <p id="losing-days" class="text-4xl font-bold text-red-400">0</p>
-                </div>
-            </section>
-
-            <div class="table-container rounded-lg shadow-lg overflow-hidden">
-                <table class="w-full text-left">
-                    <thead class="text-gray-300 uppercase text-sm">
-                        <tr>
-                            <th class="py-3 px-4">Date</th>
-                            <th class="py-3 px-4 text-right">Result</th>
-                        </tr>
-                    </thead>
-                    <tbody id="results-log">
-                        <!-- Results will be loaded here by JavaScript -->
-                    </tbody>
-                </table>
             </div>
-
-            <div class="text-center mt-8">
-                <a href="index.html" class="inline-block bg-yellow-400 text-gray-900 font-bold py-3 px-8 rounded-full shadow-lg hover:bg-yellow-500">
-                    &larr; Back to Main Page
-                </a>
+            <div id="streak-display" class="text-2xl text-orange-400 text-center">
+                🔥 <span class="font-bold">0</span> Day Streak
             </div>
         </div>
+
+        <!-- Stats Section -->
+        <h2 class="text-2xl md:text-3xl font-bold text-gray-200 text-center mb-6">Challenge Stats</h2>
+        <!-- Grid for stats -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
+            <!-- Winning Days -->
+            <div class="stat-box">
+                <div class="stat-box-title">Winning Days</div>
+                <div id="winning-days" class="stat-box-number text-green-400">0</div>
+            </div>
+            <!-- Losing Days -->
+            <div class="stat-box">
+                <div class="stat-box-title">Losing Days</div>
+                <div id="losing-days" class="stat-box-number text-red-400">0</div>
+            </div>
+            <!-- Days Missed (New) -->
+            <div class="stat-box">
+                <div class="stat-box-title">Days Missed</div>
+                <div id="days-missed" class="stat-box-number text-gray-300">0</div>
+            </div>
+        </div>
+
+        <!-- History Table -->
+        <h2 class="text-2xl md:text-3xl font-bold text-gray-200 text-center mb-6">Daily Log</h2>
+        <div class="relative overflow-x-auto shadow-md rounded-lg">
+            <table class="w-full text-sm text-left text-gray-400">
+                <thead class="text-xs text-gray-400 uppercase bg-gray-700">
+                    <tr>
+                        <th scope="col" class="px-6 py-3">
+                            Date
+                        </th>
+                        <th scope="col" class="px-6 py-3">
+                            Result
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="results-table-body">
+                    <!-- Rows will be dynamically inserted here -->
+                </tbody>
+            </table>
+        </div>
+
     </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 py-6 px-6 text-center text-gray-500 text-sm mt-20">
+        <p>&copy; 2025 Mr Bust Poker. All Rights Reserved.</p>
+        <p>A project by Mapz Poker</p>
+    </footer>
 
 </body>
 </html>
